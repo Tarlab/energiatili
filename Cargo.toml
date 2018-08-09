@@ -1,0 +1,9 @@
+[workspace]
+members = [
+    "energiatili-import",
+    "energiatili-model",
+    "influxdb-export",
+]
+
+[profile.release]
+lto = true

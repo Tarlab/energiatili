@@ -1,0 +1,10 @@
+[package]
+name = "influxdb-export"
+version = "0.1.0"
+authors = ["Ossi Herrala <oherrala@iki.fi>"]
+license = "MIT"
+
+[dependencies]
+energiatili_model = { path = "../energiatili-model" }
+env_logger = "0.5"
+influent = "0.4"
