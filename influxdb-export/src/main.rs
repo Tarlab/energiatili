@@ -28,7 +28,7 @@ fn main() {
     for m in measurements.0 {
         println!("{:?}", m);
         use influent::measurement::{Measurement, Value};
-        let mut measurement = Measurement::new("electricity");
+        let mut measurement = Measurement::new("energiatili");
 
         let ts = m.timestamp.timestamp() / 3600;
         measurement.set_timestamp(ts);
