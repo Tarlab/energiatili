@@ -5,7 +5,7 @@ extern crate energiatili_model;
 
 use std::io;
 
-use influent::client::{Client, Credentials};
+use influent::client::{Client, Credentials, Precision};
 
 use energiatili_model::measurement::{Measurements, Resolution, Tariff};
 use energiatili_model::model::Model;
@@ -29,7 +29,10 @@ fn main() {
         println!("{:?}", m);
         use influent::measurement::{Measurement, Value};
         let mut measurement = Measurement::new("electricity");
-        measurement.set_timestamp(m.timestamp.timestamp_nanos());
+
+        let ts = m.timestamp.timestamp() / 3600;
+        measurement.set_timestamp(ts);
+
         measurement.add_field("consumption", Value::Float(m.consumption));
         measurement.add_field("quality", Value::Integer(i64::from(m.quality)));
 
@@ -63,6 +66,6 @@ fn main() {
             Resolution::Year => measurement.add_tag("resolution", "year"),
         }
 
-        influxdb.write_one(measurement, None).expect("write_one");
+        influxdb.write_one(measurement, Some(Precision::Hours)).expect("write_one");
     }
 }
