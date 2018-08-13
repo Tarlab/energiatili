@@ -6,6 +6,7 @@ extern crate energiatili_model;
 use std::io;
 
 use influent::client::{Client, Credentials, Precision};
+use influent::measurement::{Measurement, Value};
 
 use energiatili_model::measurement::{Measurements, Resolution, Tariff};
 use energiatili_model::model::Model;
@@ -25,9 +26,10 @@ fn main() {
 
     let influxdb = influent::create_client(credentials, vec!["http://localhost:8086"]);
 
+    const SIZE: usize = 1000;
+    let mut buf = Vec::with_capacity(SIZE);
+
     for m in measurements.0 {
-        println!("{:?}", m);
-        use influent::measurement::{Measurement, Value};
         let mut measurement = Measurement::new("energiatili");
 
         let ts = m.timestamp.timestamp() / 3600;
@@ -66,6 +68,14 @@ fn main() {
             Resolution::Year => measurement.add_tag("resolution", "year"),
         }
 
-        influxdb.write_one(measurement, Some(Precision::Hours)).expect("write_one");
+        println!("{:?}", measurement);
+        buf.push(measurement);
+
+        if buf.len() == SIZE {
+            influxdb.write_many(&buf, Some(Precision::Hours)).expect("write_one");
+            buf.clear();
+        }
     }
+
+    influxdb.write_many(&buf, Some(Precision::Hours)).expect("write_one");
 }
