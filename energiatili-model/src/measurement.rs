@@ -1,7 +1,9 @@
 use std::cmp;
 
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use chrono_tz::{Europe::Helsinki, Tz};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono::offset::LocalResult;
+use serde_json::Value;
 
 use model::Model;
 
@@ -96,24 +98,35 @@ fn convert_one_resolution(resolution: Resolution, model: &Model) -> Measurements
         };
 
         for data in &consumptions.series.data {
-            let naive_date = NaiveDateTime::from_timestamp((data[0] / 1000.0) as i64, 0);
-            let localtime = Helsinki.from_local_datetime(&naive_date).unwrap();
+            let raw_ts = data.get(0).and_then(Value::as_i64).expect("get i64");
+            let consumption = data.get(1).and_then(Value::as_f64).expect("get f64");
+
+            let naive_date = NaiveDateTime::from_timestamp((raw_ts / 1000) as i64, 0);
+            let localtime = match Helsinki.from_local_datetime(&naive_date) {
+                LocalResult::None => panic!("Couldn't convert local time"),
+                LocalResult::Single(t) => t,
+                LocalResult::Ambiguous(t, _) => t,
+            };
             let timestamp: DateTime<Utc> = localtime.with_timezone(&Utc);
 
-            let consumption = data[1];
+            // Dunno if this really is i8, but when measurement is missing it
+            // shows "255.0" in json, which could be "-1" when represented as
+            // i8.
             let mut quality: i8 = -1;
             let mut temperature = ::std::f64::NAN;
 
             for status in statuses {
-                if (status[0] - data[0]).abs() < 1.0 {
-                    quality = status[1] as i8;
+                let ts = status.get(0).and_then(Value::as_i64).expect("get i64");
+                if raw_ts == ts {
+                    quality = status.get(1).and_then(Value::as_f64).expect("get quality value") as i8;
                     break;
                 }
             }
 
             for temp in temps {
-                if (temp[0] - data[0]).abs() < 1.0 {
-                    temperature = temp[1];
+                let ts = temp.get(0).and_then(Value::as_i64).expect("get i64");
+                if raw_ts == ts {
+                    temperature = temp.get(1).and_then(Value::as_f64).expect("get temperature value");
                     break;
                 }
             }

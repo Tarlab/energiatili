@@ -53,7 +53,7 @@ pub struct Consumption {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Measurements {
-    pub data: Vec<Vec<f64>>,
+    pub data: Vec<serde_json::value::Value>,
     pub data_count: usize,
     pub name: String,
     pub resolution: String,
