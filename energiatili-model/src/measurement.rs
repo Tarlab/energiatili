@@ -1,13 +1,16 @@
 use std::cmp;
+use std::collections::{BTreeMap, BTreeSet};
 
-use chrono_tz::{Europe::Helsinki, Tz};
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use chrono::offset::LocalResult;
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use chrono_tz::Europe::Helsinki;
+use num_traits::{cast, NumCast};
+use rayon::prelude::*;
 use serde_json::Value;
 
 use model::Model;
 
-pub struct Measurements(pub Vec<Measurement>);
+pub struct Measurements(pub BTreeSet<Measurement>);
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Resolution {
@@ -16,6 +19,13 @@ pub enum Resolution {
     Month,
     Year,
 }
+
+pub static RESOLUTIONS: &[Resolution] = &[
+    Resolution::Hour,
+    Resolution::Day,
+    Resolution::Month,
+    Resolution::Year,
+];
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Tariff {
@@ -33,12 +43,10 @@ pub struct Price {
 pub struct Measurement {
     /// Time of measurement
     pub timestamp: DateTime<Utc>,
-    /// Local (Finnish) time
-    pub localtime: DateTime<Tz>,
     /// Electricity consumption in kWh
     pub consumption: f64,
     /// Quality of electricity (probably percent)
-    pub quality: i8,
+    pub quality: u8,
     /// Outside temperature (in °C)
     pub temperature: f64,
     /// Day or Night pricing
@@ -59,26 +67,17 @@ impl Ord for Measurement {
 
 impl<'a> From<&'a Model> for Measurements {
     fn from(model: &Model) -> Self {
-        let mut measurements = Vec::new();
+        let measurements: BTreeSet<Measurement> = RESOLUTIONS
+            .into_par_iter()
+            .map(|resolution| convert_one_resolution(*resolution, model).0)
+            .flatten()
+            .collect();
 
-        for resolution in &[
-            Resolution::Hour,
-            Resolution::Day,
-            Resolution::Month,
-            Resolution::Year,
-        ] {
-            let mut meas = convert_one_resolution(*resolution, model);
-            measurements.append(&mut meas.0);
-        }
-
-        measurements.sort();
         Measurements(measurements)
     }
 }
 
 fn convert_one_resolution(resolution: Resolution, model: &Model) -> Measurements {
-    let mut measurements = Vec::new();
-
     let root = match resolution {
         Resolution::Hour => &model.hours,
         Resolution::Day => &model.days,
@@ -86,74 +85,69 @@ fn convert_one_resolution(resolution: Resolution, model: &Model) -> Measurements
         Resolution::Year => &model.years,
     };
 
-    let consumptions = &root.consumptions;
-    let statuses = &root.consumption_statuses.data;
-    let temps = &root.temperature.data;
+    let status_map: BTreeMap<i64, u8> = values_into_map(&root.consumption_statuses.data);
+    let temperature_map: BTreeMap<i64, f64> = values_into_map(&root.temperature.data);
 
-    for consumptions in consumptions {
-        let tariff = match &*consumptions.tariff_time_zone_name {
-            "Päivä" => Tariff::Day,
-            "Yö" => Tariff::Night,
-            name => panic!("Unknown tariff encountered: {}", name),
-        };
-
-        for data in &consumptions.series.data {
-            let raw_ts = data.get(0).and_then(Value::as_i64).expect("get i64");
-            let consumption = data.get(1).and_then(Value::as_f64).expect("get f64");
-
-            let naive_date = NaiveDateTime::from_timestamp((raw_ts / 1000) as i64, 0);
-            let localtime = match Helsinki.from_local_datetime(&naive_date) {
-                LocalResult::None => panic!("Couldn't convert local time"),
-                LocalResult::Single(t) => t,
-                LocalResult::Ambiguous(t, _) => t,
+    let measurements = root
+        .consumptions
+        .par_iter()
+        .map(|consumptions| {
+            let consumption_map: BTreeMap<i64, f64> = values_into_map(&consumptions.series.data);
+            let tariff = match &*consumptions.tariff_time_zone_name {
+                "Päivä" => Tariff::Day,
+                "Yö" => Tariff::Night,
+                name => panic!("Unknown tariff encountered: {}", name),
             };
-            let timestamp: DateTime<Utc> = localtime.with_timezone(&Utc);
+            consumption_map
+                .into_iter()
+                .map(|(ts, consumption)| {
+                    build_measurement(
+                        ts,
+                        consumption,
+                        &status_map,
+                        &temperature_map,
+                        tariff,
+                        model,
+                        resolution,
+                    )
+                })
+                .collect::<BTreeSet<_>>()
+        })
+        .flatten()
+        .collect();
 
-            // Dunno if this really is i8, but when measurement is missing it
-            // shows "255.0" in json, which could be "-1" when represented as
-            // i8.
-            let mut quality: i8 = -1;
-            let mut temperature = ::std::f64::NAN;
-
-            for status in statuses {
-                let ts = status.get(0).and_then(Value::as_i64).expect("get i64");
-                if raw_ts == ts {
-                    quality = status.get(1).and_then(Value::as_f64).expect("get quality value") as i8;
-                    break;
-                }
-            }
-
-            for temp in temps {
-                let ts = temp.get(0).and_then(Value::as_i64).expect("get i64");
-                if raw_ts == ts {
-                    temperature = temp.get(1).and_then(Value::as_f64).expect("get temperature value");
-                    break;
-                }
-            }
-
-            let price = {
-                let p = find_price(timestamp, tariff, model);
-                let energy = p.energy.map(|p| p * consumption);
-                let transfer = p.transfer.map(|p| p * consumption);
-                Price { energy, transfer }
-            };
-
-            let meas = Measurement {
-                timestamp,
-                localtime,
-                consumption,
-                quality,
-                temperature,
-                tariff,
-                resolution,
-                price,
-            };
-            measurements.push(meas);
-        }
-    }
-
-    measurements.sort();
     Measurements(measurements)
+}
+
+fn build_measurement(
+    ts: i64,
+    consumption: f64,
+    status_map: &BTreeMap<i64, u8>,
+    temperature_map: &BTreeMap<i64, f64>,
+    tariff: Tariff,
+    model: &Model,
+    resolution: Resolution,
+) -> Measurement {
+    let timestamp: DateTime<Utc> = convert_timestamp(ts);
+    let quality = *status_map.get(&ts).unwrap_or(&0);
+    let temperature = *temperature_map.get(&ts).unwrap_or(&::std::f64::NAN);
+
+    let price = {
+        let p = find_price(timestamp, tariff, model);
+        let energy = p.energy.map(|p| p * consumption);
+        let transfer = p.transfer.map(|p| p * consumption);
+        Price { energy, transfer }
+    };
+
+    Measurement {
+        timestamp,
+        consumption,
+        quality,
+        temperature,
+        tariff,
+        resolution,
+        price,
+    }
 }
 
 fn find_price(timestamp: DateTime<Utc>, tariff: Tariff, model: &Model) -> Price {
@@ -185,4 +179,32 @@ fn find_price(timestamp: DateTime<Utc>, tariff: Tariff, model: &Model) -> Price 
     }
 
     Price { transfer, energy }
+}
+
+fn values_into_map<T>(values: &[Value]) -> BTreeMap<i64, T>
+where
+    T: NumCast,
+{
+    values
+        .into_iter()
+        .map(|value| {
+            let ts = value.get(0).and_then(Value::as_i64).expect("into_map ts");
+            let val = value
+                .get(1)
+                .and_then(Value::as_f64)
+                .and_then(cast)
+                .expect("into_map value");
+            (ts, val)
+        })
+        .collect()
+}
+
+fn convert_timestamp(timestamp: i64) -> DateTime<Utc> {
+    let naive_date = NaiveDateTime::from_timestamp((timestamp / 1000) as i64, 0);
+    let localtime = match Helsinki.from_local_datetime(&naive_date) {
+        LocalResult::None => panic!("Couldn't convert local time"),
+        LocalResult::Single(t) => t,
+        LocalResult::Ambiguous(t, _) => t,
+    };
+    localtime.with_timezone(&Utc)
 }
