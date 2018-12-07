@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate log;
+
 extern crate env_logger;
 extern crate influent;
 
@@ -32,7 +35,7 @@ fn main() {
     for m in measurements.0 {
         let mut measurement = Measurement::new("energiatili");
 
-        let ts = m.timestamp.timestamp() / 3600;
+        let ts = m.timestamp.timestamp_nanos();
         measurement.set_timestamp(ts);
 
         measurement.add_field("consumption", Value::Float(m.consumption));
@@ -68,14 +71,14 @@ fn main() {
             Resolution::Year => measurement.add_tag("resolution", "year"),
         }
 
-        println!("{:?}", measurement);
         buf.push(measurement);
 
         if buf.len() == SIZE {
-            influxdb.write_many(&buf, Some(Precision::Hours)).expect("write_one");
+            debug!("Collected {} measurements. Writing to InfluxDB.", SIZE);
+            influxdb.write_many(&buf, Some(Precision::Hours));
             buf.clear();
         }
     }
 
-    influxdb.write_many(&buf, Some(Precision::Hours)).expect("write_one");
+    influxdb.write_many(&buf, Some(Precision::Hours));
 }
