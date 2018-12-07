@@ -8,7 +8,7 @@ use num_traits::{cast, NumCast};
 use rayon::prelude::*;
 use serde_json::Value;
 
-use model::Model;
+use crate::model::Model;
 
 pub struct Measurements(pub BTreeSet<Measurement>);
 

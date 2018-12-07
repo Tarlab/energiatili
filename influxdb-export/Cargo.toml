@@ -3,6 +3,7 @@ name = "influxdb-export"
 version = "0.1.0"
 authors = ["Ossi Herrala <oherrala@iki.fi>"]
 license = "MIT"
+edition = "2018"
 
 [dependencies]
 energiatili_model = { path = "../energiatili-model" }

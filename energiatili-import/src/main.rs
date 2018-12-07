@@ -1,17 +1,8 @@
-extern crate cookie;
-extern crate env_logger;
-extern crate reqwest;
-extern crate serde_json;
-
-#[macro_use]
-extern crate log;
-
-extern crate energiatili_model;
-
 use std::io;
 
-use reqwest::header;
 use cookie::CookieJar;
+use log::{debug, trace};
+use reqwest::header;
 
 use energiatili_model::model::Model;
 

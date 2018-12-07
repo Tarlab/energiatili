@@ -1,15 +1,8 @@
-#[macro_use]
-extern crate log;
-
-extern crate env_logger;
-extern crate influent;
-
-extern crate energiatili_model;
-
 use std::io;
 
 use influent::client::{Client, Credentials, Precision};
 use influent::measurement::{Measurement, Value};
+use log::debug;
 
 use energiatili_model::measurement::{Measurements, Resolution, Tariff};
 use energiatili_model::model::Model;

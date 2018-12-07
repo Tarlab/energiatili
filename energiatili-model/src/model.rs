@@ -3,7 +3,7 @@ use std::io::{BufRead, Read};
 use chrono::{DateTime, Utc};
 use serde_json;
 
-use utils::fix_new_date;
+use crate::utils::fix_new_date;
 
 impl Model {
     pub fn from_report_html(input: impl BufRead) -> Model {
