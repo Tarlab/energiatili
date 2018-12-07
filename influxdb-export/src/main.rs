@@ -2,7 +2,6 @@ use std::io;
 
 use influent::client::{Client, Credentials, Precision};
 use influent::measurement::{Measurement, Value};
-use log::debug;
 
 use energiatili_model::measurement::{Measurements, Resolution, Tariff};
 use energiatili_model::model::Model;
@@ -20,7 +19,7 @@ fn main() {
         database: "energiatili",
     };
 
-    let influxdb = influent::create_client(credentials, vec!["http://localhost:8086"]);
+    let influxdb = influent::create_client(credentials, vec!["http://127.0.0.1:8086"]);
 
     const SIZE: usize = 1000;
     let mut buf = Vec::with_capacity(SIZE);
@@ -67,11 +66,10 @@ fn main() {
         buf.push(measurement);
 
         if buf.len() == SIZE {
-            debug!("Collected {} measurements. Writing to InfluxDB.", SIZE);
-            influxdb.write_many(&buf, Some(Precision::Hours));
+            influxdb.write_many(&buf, None).expect("influent write_many");
             buf.clear();
         }
     }
 
-    influxdb.write_many(&buf, Some(Precision::Hours));
+    influxdb.write_many(&buf, None).expect("influent write_many");
 }
