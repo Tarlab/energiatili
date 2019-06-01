@@ -1,8 +1,6 @@
 use std::io;
 
-use cookie::CookieJar;
 use log::{debug, trace};
-use reqwest::header;
 
 use energiatili_model::model::Model;
 
@@ -16,9 +14,9 @@ mod secrets;
 fn main() -> io::Result<()> {
     env_logger::init();
 
-    let mut client = Client::new();
+    let mut client = Client::new().expect("new client");
     client.login().expect("Client login");
-    let report = client.consumption_report();
+    let report = client.consumption_report().expect("consumption_report");
     debug!("Consumption report HTML:\n{}\n", report);
 
     let cursor = io::Cursor::new(report);
@@ -29,98 +27,69 @@ fn main() -> io::Result<()> {
 
 #[derive(Debug)]
 struct Client {
-    jar: CookieJar,
     client: reqwest::Client,
 }
 
+#[derive(Debug)]
+enum Error {
+    Reqwest(reqwest::Error),
+}
+
+type Result<T> = std::result::Result<T, Error>;
+
 impl Client {
-    fn new() -> Client {
+    fn new() -> Result<Client> {
         trace!("Client::new()");
         let client = reqwest::ClientBuilder::new()
-            .build().expect("ClientBuilder::build");
-        let mut jar = cookie::CookieJar::new();
+            .redirect(reqwest::RedirectPolicy::none())
+            .cookie_store(true)
+            .build()?;
 
         let req = client.get(&format!("{}{}", BASE_URL, FIRST_URL))
-            .build().expect("Build first request");
+            .build()?;
         debug!("GET Request: {:?}", req);
 
-        let resp = client.execute(req).expect("Execute consumption report request");
+        let resp = client.execute(req)?;
         debug!("GET Response: {:?}", resp);
 
-        if let Some(cookies) = resp.headers().get::<header::SetCookie>() {
-            store_cookies(&mut jar, cookies);
-        }
-
-        Self { jar, client }
+        Ok(Self { client })
     }
 
-    fn login(&mut self) -> io::Result<()> {
+    fn login(&mut self) -> Result<()> {
         trace!("Client::login({:?})", self);
-        let jar = &mut self.jar;
-
-        let client = reqwest::ClientBuilder::new()
-            .redirect(reqwest::RedirectPolicy::none())
-            .build().expect("ClientBuilder::build");
 
         let params = [("username", secrets::USERNAME), ("password", secrets::PASSWORD)];
-        let headers = cookie_header(&jar);
-        let req = client.post(&format!("{}{}", BASE_URL, LOGIN_URL))
+        let req = self.client.post(&format!("{}{}", BASE_URL, LOGIN_URL))
             .form(&params)
-            .headers(headers)
-            .build().expect("build login request");
+            .build()?;
         debug!("POST Request: {:?}", req);
 
-        let resp = client.execute(req).expect("Execute consumption report request");
+        let resp = self.client.execute(req)?;
         debug!("POST Response: {:?}", resp);
-
-        if let Some(cookies) = resp.headers().get::<header::SetCookie>() {
-            store_cookies(jar, cookies);
-        }
 
         Ok(())
     }
 
-    fn consumption_report(&self) -> String {
+    fn consumption_report(&self) -> Result<String> {
         trace!("Client::consumption_report({:?})", self);
         let client = &self.client;
-        let jar = &self.jar;
 
-        let headers = cookie_header(&jar);
         let req = client.get(&format!("{}{}", BASE_URL, REPORT_URL))
-            .headers(headers)
             .build().expect("Build consumption report request");
         debug!("GET Request: {:?}", req);
 
-        let mut resp = client.execute(req).expect("Execute consumption report request");
+        let mut resp = client.execute(req)?;
         debug!("GET Response: {:?}", resp);
 
         let mut buf: Vec<u8> = Vec::new();
-        resp.copy_to(&mut buf).expect("Result copy_to");
-        let res = String::from_utf8_lossy(&buf);
-        res.to_string()
+        resp.copy_to(&mut buf)?;
+        let res = String::from_utf8(buf).expect("from_utf8");
+        Ok(res)
     }
 }
 
-fn cookie_header(jar: &CookieJar) -> header::Headers {
-    trace!("cookie_header(...)");
-    let mut headers = header::Headers::new();
-    let mut c = reqwest::header::Cookie::new();
-
-    for cookie in jar.iter() {
-        c.append(cookie.name().to_string(), cookie.value().to_string());
-        debug!("Adding cookie into request: {}", cookie);
-    }
-
-    headers.set::<header::Cookie>(c);
-    headers
-}
-
-fn store_cookies(jar: &mut CookieJar, cookies: &header::SetCookie) {
-    trace!("store_cookies(...)");
-    for cookie in cookies.iter() {
-        let cookie = cookie.clone();
-        let c = cookie::Cookie::parse(cookie).expect("parse cookie");
-        debug!("Adding cookie into jar: {} = {}", c.name(), c.value());
-        jar.add(c);
+impl From<reqwest::Error> for Error {
+    fn from(err: reqwest::Error) -> Self {
+        Error::Reqwest(err)
     }
 }
