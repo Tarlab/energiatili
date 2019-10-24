@@ -186,7 +186,7 @@ where
     T: NumCast,
 {
     values
-        .into_iter()
+        .iter()
         .map(|value| {
             let ts = value.get(0).and_then(Value::as_i64).expect("into_map ts");
             let val = value
