@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "energiatili-config",
     "energiatili-import",
     "energiatili-model",
     "influxdb-export",

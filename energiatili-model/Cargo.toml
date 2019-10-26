@@ -1,5 +1,5 @@
 [package]
-name = "energiatili_model"
+name = "energiatili-model"
 version = "0.1.0"
 authors = ["Ossi Herrala <oherrala@iki.fi>"]
 license = "MIT"

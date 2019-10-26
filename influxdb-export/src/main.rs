@@ -1,7 +1,6 @@
 use std::io;
 
 use influxdb;
-
 use tokio::runtime::current_thread::Runtime;
 
 use energiatili_model::measurement::{Measurements, Resolution, Tariff};
@@ -10,11 +9,21 @@ use energiatili_model::model::Model;
 fn main() {
     env_logger::init();
 
+    let config = match energiatili_config::Config::read() {
+        Ok(config) => config,
+        Err(err) => {
+            eprintln!("ERROR: {}", err);
+            std::process::exit(1);
+        }
+    };
+    let db_url = config.influxdb.url;
+    let db_name = config.influxdb.database;
+
     let stdin = io::stdin();
     let model = Model::from_reader(stdin).expect("read JSON Model");
     let measurements = Measurements::from(&model);
 
-    let client = influxdb::Client::new("http://127.0.0.1:8086", "energiatili");
+    let client = influxdb::Client::new(db_url, db_name);
 
     let mut rt = Runtime::new().expect("Unable to create a runtime");
 

@@ -9,13 +9,21 @@ const FIRST_URL: &str = "/Extranet/Extranet";
 const LOGIN_URL: &str = "/Extranet/Extranet/LogIn";
 const REPORT_URL: &str = "/Reporting/CustomerConsumption/UserConsumptionReport";
 
-mod secrets;
-
 fn main() -> io::Result<()> {
     env_logger::init();
 
+    let config = match energiatili_config::Config::read() {
+        Ok(config) => config,
+        Err(err) => {
+            eprintln!("ERROR: {}", err);
+            std::process::exit(1);
+        }
+    };
+    let username = &config.energiatili.username;
+    let password = &config.energiatili.password;
+
     let mut client = Client::new().expect("new client");
-    client.login().expect("Client login");
+    client.login(username, password).expect("Client login");
     let report = client.consumption_report().expect("consumption_report");
     debug!("Consumption report HTML:\n{}\n", report);
 
@@ -55,10 +63,10 @@ impl Client {
         Ok(Self { client })
     }
 
-    fn login(&mut self) -> Result<()> {
+    fn login(&mut self, username: &str, password: &str) -> Result<()> {
         trace!("Client::login({:?})", self);
 
-        let params = [("username", secrets::USERNAME), ("password", secrets::PASSWORD)];
+        let params = [("username", username), ("password", password)];
         let req = self.client.post(&format!("{}{}", BASE_URL, LOGIN_URL))
             .form(&params)
             .build()?;

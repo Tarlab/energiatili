@@ -6,7 +6,8 @@ license = "MIT"
 edition = "2018"
 
 [dependencies]
-energiatili_model = { path = "../energiatili-model" }
+energiatili-config = { path = "../energiatili-config" }
+energiatili-model = { path = "../energiatili-model" }
 env_logger = "0.7"
 influxdb = "0.0.5"
 tokio = "0.1"
