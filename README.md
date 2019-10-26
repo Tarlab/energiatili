@@ -26,8 +26,8 @@ username = "<your username>"
 password = "<your really secret password>"
 
 [influxdb]
-url = "<url to InfluxDB, e.g. http://127.0.0.1:8086/"
-database = "<your InfluxDB database name"
+url = "<url to InfluxDB, e.g. http://127.0.0.1:8086/>"
+database = "<your InfluxDB database name>"
 ```
 
 ## Remember to create database
