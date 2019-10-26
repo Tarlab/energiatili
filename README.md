@@ -17,7 +17,7 @@
 
 Under the directory specified (see
 https://docs.rs/dirs/2.0.2/dirs/fn.config_dir.html, or just run one of the
-binaries and the error message should ead the way), add file called
+binaries and the error message should lead the way), add file called
 `energiatili.toml` with following kind of config:
 
 ```toml
