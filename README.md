@@ -8,7 +8,7 @@
      Or you can use Docker (https://hub.docker.com/_/rust) if your target system
      is Linux.
 
- 2. Compile & install: `cargo install`
+ 2. Compile & install: `cargo install --path energiatili-import && cargo install --path influxdb-export`
 
  3. You should find the binaries installed in `${HOME}/.cargo/bin`. Move them
     wheverever you need.
