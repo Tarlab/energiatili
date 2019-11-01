@@ -151,15 +151,9 @@ fn build_measurement(
 }
 
 fn find_price(timestamp: DateTime<Utc>, tariff: Tariff, model: &Model) -> Price {
-    let (transfer_list, energy_list) = match tariff {
-        Tariff::Day => (
-            &model.network_price_list.time_based_energy_day_prices,
-            &model.sales_price_list.time_based_energy_day_prices,
-        ),
-        Tariff::Night => (
-            &model.network_price_list.time_based_energy_night_prices,
-            &model.sales_price_list.time_based_energy_night_prices,
-        ),
+    let transfer_list = match tariff {
+        Tariff::Day => &model.network_price_list.time_based_energy_day_prices,
+        Tariff::Night => &model.network_price_list.time_based_energy_night_prices,
     };
 
     let mut transfer = None;
@@ -171,10 +165,17 @@ fn find_price(timestamp: DateTime<Utc>, tariff: Tariff, model: &Model) -> Price 
     }
 
     let mut energy = None;
-    for e in energy_list {
-        if timestamp >= e.start_time && timestamp <= e.end_time {
-            energy = Some(e.price_with_vat);
-            break;
+    if let Some(energy_list) = &model.sales_price_list {
+        let energy_list = match tariff {
+            Tariff::Day => &energy_list.time_based_energy_day_prices,
+            Tariff::Night => &energy_list.time_based_energy_night_prices,
+        };
+
+        for e in energy_list {
+            if timestamp >= e.start_time && timestamp <= e.end_time {
+                energy = Some(e.price_with_vat);
+                break;
+            }
         }
     }
 

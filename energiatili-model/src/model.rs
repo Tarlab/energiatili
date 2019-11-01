@@ -31,7 +31,7 @@ pub struct Model {
     pub months: OneResolution,
     pub years: OneResolution,
     pub network_price_list: PriceList,
-    pub sales_price_list: PriceList,
+    pub sales_price_list: Option<PriceList>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
