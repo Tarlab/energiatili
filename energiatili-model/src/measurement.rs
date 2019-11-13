@@ -29,8 +29,12 @@ pub static RESOLUTIONS: &[Resolution] = &[
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
 pub enum Tariff {
+    /// Tariff of daytime when day/night tariff is used
     Day,
+    /// Tariff of nighttime when day/night tariff is used
     Night,
+    /// Single tariff without day/night tariff changes
+    Simple,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
@@ -96,6 +100,7 @@ fn convert_one_resolution(resolution: Resolution, model: &Model) -> Measurements
             let tariff = match &*consumptions.tariff_time_zone_name {
                 "Päivä" => Tariff::Day,
                 "Yö" => Tariff::Night,
+                "Yksiaikainen" => Tariff::Simple,
                 name => panic!("Unknown tariff encountered: {}", name),
             };
             consumption_map
@@ -151,9 +156,12 @@ fn build_measurement(
 }
 
 fn find_price(timestamp: DateTime<Utc>, tariff: Tariff, model: &Model) -> Price {
+    let empty_vec = Vec::new();
+
     let transfer_list = match tariff {
         Tariff::Day => &model.network_price_list.time_based_energy_day_prices,
         Tariff::Night => &model.network_price_list.time_based_energy_night_prices,
+        Tariff::Simple => &empty_vec,
     };
 
     let mut transfer = None;
@@ -169,6 +177,7 @@ fn find_price(timestamp: DateTime<Utc>, tariff: Tariff, model: &Model) -> Price 
         let energy_list = match tariff {
             Tariff::Day => &energy_list.time_based_energy_day_prices,
             Tariff::Night => &energy_list.time_based_energy_night_prices,
+            Tariff::Simple => &empty_vec,
         };
 
         for e in energy_list {

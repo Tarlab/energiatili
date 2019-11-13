@@ -24,7 +24,6 @@ fn main() {
     let measurements = Measurements::from(&model);
 
     let client = influxdb::Client::new(db_url, db_name);
-
     let mut rt = Runtime::new().expect("Unable to create a runtime");
 
     for m in measurements.0 {
@@ -55,6 +54,7 @@ fn main() {
             measurement = match m.tariff {
                 Tariff::Day => measurement.add_tag("tariff", "day"),
                 Tariff::Night => measurement.add_tag("tariff", "night"),
+                Tariff::Simple => measurement,
             };
         }
 
@@ -64,7 +64,6 @@ fn main() {
             Resolution::Month => measurement.add_tag("resolution", "month"),
             Resolution::Year => measurement.add_tag("resolution", "year"),
         };
-
         rt.block_on(client.query(&measurement)).expect("influxdb write");
     }
 }
