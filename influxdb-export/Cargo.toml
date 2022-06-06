@@ -10,4 +10,4 @@ energiatili-config = { path = "../energiatili-config" }
 energiatili-model = { path = "../energiatili-model" }
 env_logger = "0.7"
 influxdb = "0.0.5"
-tokio = "0.1"
+tokio = "1.8"
