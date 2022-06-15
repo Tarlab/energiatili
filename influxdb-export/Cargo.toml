@@ -9,5 +9,6 @@ edition = "2021"
 energiatili-config = { path = "../energiatili-config" }
 energiatili-model = { path = "../energiatili-model" }
 env_logger = "0.9"
-influxdb = "0.0.5"
-tokio = "0.1"
+futures = "0.3"
+influxdb2_client = { git = "https://github.com/influxdata/influxdb_iox", rev = "bf39649d64e2890e2ae9e5a4e245c67624d2df43" }
+tokio = { version = "1", features = [ "macros", "rt-multi-thread" ] }

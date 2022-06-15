@@ -18,7 +18,9 @@ pub struct Energiatili {
 #[derive(Default, Serialize, Deserialize)]
 pub struct InfluxDB {
     pub url: String,
-    pub database: String,
+    pub token: String,
+    pub org: String,
+    pub bucket: String,
 }
 
 impl Config {
