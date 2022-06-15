@@ -3,11 +3,11 @@ name = "influxdb-export"
 version = "0.1.0"
 authors = ["Ossi Herrala <oherrala@iki.fi>"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 energiatili-config = { path = "../energiatili-config" }
 energiatili-model = { path = "../energiatili-model" }
-env_logger = "0.7"
+env_logger = "0.9"
 influxdb = "0.0.5"
 tokio = "0.1"

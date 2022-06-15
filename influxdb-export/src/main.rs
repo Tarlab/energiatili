@@ -1,6 +1,5 @@
 use std::io;
 
-use influxdb;
 use tokio::runtime::current_thread::Runtime;
 
 use energiatili_model::measurement::{Measurements, Resolution, Tariff};
@@ -29,7 +28,7 @@ fn main() {
     for m in measurements.0 {
         let ts = m.timestamp.timestamp_nanos();
         let timestamp = influxdb::Timestamp::NANOSECONDS(ts as usize);
-        let mut measurement = influxdb::Query::write_query(timestamp, "energiatili");
+        let mut measurement = <dyn influxdb::Query>::write_query(timestamp, "energiatili");
 
         measurement = measurement.add_field("consumption", m.consumption);
         measurement = measurement.add_field("quality", i64::from(m.quality));

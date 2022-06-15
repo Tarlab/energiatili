@@ -3,11 +3,11 @@ name = "energiatili-model"
 version = "0.1.0"
 authors = ["Ossi Herrala <oherrala@iki.fi>"]
 license = "MIT"
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-chrono-tz = { version = "0.5", features = ["serde"] }
+chrono-tz = { version = "0.6", features = ["serde"] }
 num-traits = "0.2"
 rayon = "1"
 serde = { version = "1", features = ["derive"] }

@@ -12,7 +12,7 @@ use crate::model::Model;
 
 pub struct Measurements(pub BTreeSet<Measurement>);
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd)]
 pub enum Resolution {
     Hour,
     Day,
@@ -27,7 +27,7 @@ pub static RESOLUTIONS: &[Resolution] = &[
     Resolution::Year,
 ];
 
-#[derive(Clone, Copy, Debug, PartialEq, PartialOrd)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd)]
 pub enum Tariff {
     /// Tariff of daytime when day/night tariff is used
     Day,
@@ -43,7 +43,7 @@ pub struct Price {
     pub energy: Option<f64>,
 }
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq)]
 pub struct Measurement {
     /// Time of measurement
     pub timestamp: DateTime<Utc>,
@@ -62,6 +62,12 @@ pub struct Measurement {
 }
 
 impl Eq for Measurement {}
+
+impl PartialOrd for Measurement {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.timestamp.partial_cmp(&other.timestamp)
+    }
+}
 
 impl Ord for Measurement {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
@@ -135,7 +141,7 @@ fn build_measurement(
 ) -> Measurement {
     let timestamp: DateTime<Utc> = convert_timestamp(ts);
     let quality = *status_map.get(&ts).unwrap_or(&0);
-    let temperature = *temperature_map.get(&ts).unwrap_or(&::std::f64::NAN);
+    let temperature = *temperature_map.get(&ts).unwrap_or(&f64::NAN);
 
     let price = {
         let p = find_price(timestamp, tariff, model);
