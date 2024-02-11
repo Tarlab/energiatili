@@ -14,7 +14,7 @@ pub(crate) fn fix_new_date(buf: &str) -> String {
 
             // Javascript's "new Date()" supposed to be seconds since UNIX epoch UTC,
             // but it seems Energiatili's numbers are in finnish timezone instead.
-            let naive_date = NaiveDateTime::from_timestamp(date_int / 1000, 0);
+            let naive_date = NaiveDateTime::from_timestamp_opt(date_int / 1000, 0).expect("parse NaiveDateTime");
             let localtime = Helsinki.from_local_datetime(&naive_date).unwrap();
             let timestamp: DateTime<Utc> = localtime.with_timezone(&Utc);
 
