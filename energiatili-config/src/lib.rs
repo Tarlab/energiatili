@@ -6,21 +6,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Default, Serialize, Deserialize)]
 pub struct Config {
     pub energiatili: Energiatili,
-    pub influxdb: InfluxDB,
 }
 
 #[derive(Default, Serialize, Deserialize)]
 pub struct Energiatili {
     pub username: String,
     pub password: String,
-}
-
-#[derive(Default, Serialize, Deserialize)]
-pub struct InfluxDB {
-    pub url: String,
-    pub token: String,
-    pub org: String,
-    pub bucket: String,
 }
 
 impl Config {
