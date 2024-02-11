@@ -216,7 +216,7 @@ where
 }
 
 fn convert_timestamp(timestamp: i64) -> DateTime<Utc> {
-    let naive_date = NaiveDateTime::from_timestamp((timestamp / 1000) as i64, 0);
+    let naive_date = NaiveDateTime::from_timestamp_opt((timestamp / 1000) as i64, 0).expect("parse NaiveDateTime");
     let localtime = match Helsinki.from_local_datetime(&naive_date) {
         LocalResult::None => panic!("Couldn't convert local time"),
         LocalResult::Single(t) => t,
