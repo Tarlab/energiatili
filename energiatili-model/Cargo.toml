@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-chrono-tz = { version = "0.6", features = ["serde"] }
+chrono-tz = { version = "0.8", features = ["serde"] }
 num-traits = "0.2"
 rayon = "1"
 serde = { version = "1", features = ["derive"] }

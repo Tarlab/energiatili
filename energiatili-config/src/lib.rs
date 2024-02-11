@@ -29,7 +29,14 @@ impl Config {
                 format!("Couldn't open file {}: {}.", config_dir.display(), err),
             )
         })?;
-        let config = toml::from_slice(&buf).map_err(|err| {
+        let Ok(s) = std::str::from_utf8(&buf) else {
+            return Err(io::Error::new(
+                io::ErrorKind::NotFound,
+                format!("Couldn't read file as UTF-8 {}.", config_dir.display()),
+            ));
+
+        };
+        let config = toml::from_str(s).map_err(|err| {
             io::Error::new(
                 io::ErrorKind::InvalidData,
                 format!("Couldn't parse file {}: {}.", config_dir.display(), err),
